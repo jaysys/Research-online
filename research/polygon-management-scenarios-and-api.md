@@ -69,6 +69,18 @@ Request 예시:
 
 `DELETE /api/polygons/{polygon_id}`
 
+### PostGIS 확장 시 추가 API 후보
+
+`GET /api/polygons/search?intersects_bbox=minX,minY,maxX,maxY`
+
+`POST /api/polygons/query/intersections`
+
+용도:
+
+- 화면 bbox 기준 polygon 빠른 검색
+- 특정 polygon과 겹치는 영역 조회
+- 포함, 교차, 인접 등 공간 조건 검색
+
 ---
 
 ## 4. 화면 구성
@@ -245,6 +257,30 @@ MVP는 아래가 되면 성공입니다.
 - 스타일/상태별 시각화
 - 이미지 업로드 및 annotation 확장
 - 실시간 협업 편집
+
+### PostGIS 도입 시 기대 효과
+
+- `ST_Intersects`, `ST_Contains`, `ST_Within` 기반 공간 질의 지원
+- `GIST` 인덱스를 통한 대량 polygon 검색 성능 개선
+- polygon 외에 point, line, multipolygon 확장 용이
+- vector tile 또는 분석 파이프라인과의 연계가 쉬워짐
+
+### PostGIS 전환 기준
+
+- polygon 수가 증가해 전체 GeoJSON 재조회 비용이 커질 때
+- 단순 CRUD를 넘어 교차/포함/거리 기반 검색이 필요할 때
+- 다수 사용자가 동시에 편집하거나 조회하는 운영 환경으로 넘어갈 때
+
+### PostGIS 전환 후 데이터 모델 예시
+
+`polygons` 테이블에 아래 컬럼을 추가하는 방식이 현실적이다.
+
+- `geom geometry(Polygon, 4326)`
+- `properties_json jsonb`
+- `created_at timestamp`
+- `updated_at timestamp`
+
+MVP의 `polygon_json` 응답 구조는 유지하고, 내부 저장과 질의만 PostGIS로 바꾸면 프런트 변경을 최소화할 수 있다.
 
 ---
 
