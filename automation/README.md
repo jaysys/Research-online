@@ -1,114 +1,146 @@
 # Automation
 
-이 디렉터리는 이 저장소를 GitHub로 주기적으로 커밋하고 푸시하는 로컬 자동화 파일을 담고 있습니다.
+이 디렉터리는 현재 저장소를 주기적으로 커밋하고 푸시하는 로컬 자동화 파일을 담고 있습니다.
 
-현재 대상 저장소:
-- `/Users/jaehojoo/workspace/Research-online`
+핵심 목표는 저장소 폴더명이 바뀌더라도 수정 지점을 최소화하는 것입니다.
 
-현재 스케줄러 설정:
-- 브랜치: `main`
-- 원격 저장소: `origin`
-- 실행 주기: `600`초마다 1회 (`10`분)
-- `RunAtLoad`: `false`
+## 구성
 
-`RunAtLoad` 는 의도적으로 꺼두었습니다. LaunchAgent 를 로드한다고 해서 즉시 커밋이나 푸시가 실행되지는 않습니다. 작업은 다음 주기에 시작되거나, `launchctl start` 로 수동 실행했을 때 시작됩니다.
-
-## 왜 저장소를 옮겼는가
-
-이 자동화는 macOS `launchd` 를 기준으로 구성되어 있습니다. 저장소를 `Desktop` 에서 `~/workspace` 로 옮긴 이유는, `launchd` 가 `Desktop`, `Documents`, `Downloads` 같은 macOS 보호 폴더에서 실행될 때 `Operation not permitted` 오류를 낼 수 있기 때문입니다.
-
-저장소 경로를 다시 바꾸게 되면 다음 항목을 함께 수정해야 합니다.
-- `automation/com.jaysys.research-online-autopush.plist`
-- `~/Library/LaunchAgents/` 안의 심볼릭 링크
-
-## 파일 구성
+- `autopush.env`
+  브랜치, 원격 저장소, LaunchAgent 라벨처럼 환경별로 바뀔 수 있는 값을 한 곳에 모읍니다.
 
 - `auto-push.sh`
-  실제 작업을 수행하는 스크립트입니다. 자신의 위치를 기준으로 저장소 루트를 찾고, git 작업 흐름을 실행합니다.
+  자신의 위치를 기준으로 저장소 루트를 계산하고, `autopush.env` 를 읽어 git 자동화 작업을 수행합니다.
 
-- `com.jaysys.research-online-autopush.plist`
-  macOS `launchd` 작업 정의 파일입니다. 이 파일이 `~/Library/LaunchAgents/` 로 심볼릭 링크됩니다.
+- `com.jaysys.repo-autopush.plist`
+  macOS `launchd` 작업 정의 파일입니다. 파일명은 예시이며, 필요하면 원하는 서비스 식별자에 맞게 바꿀 수 있습니다.
 
 - `logs/`
-  셸 스크립트와 `launchd` 가 남기는 실행 로그 디렉터리입니다.
+  셸 스크립트가 남기는 실행 로그 디렉터리입니다.
 
-## 동작 원리
+## 변경에 강한 구조
+
+이 구조에서는 저장소 이름이 바뀌어도 다음 영향만 관리하면 됩니다.
+
+1. 저장소 루트는 고정 심볼릭 링크 경로를 통해 참조합니다.
+2. 브랜치, 원격, LaunchAgent 라벨 변경은 `autopush.env` 에서만 수정합니다.
+3. 실제 git 작업 경로와 스크립트 로그 경로는 스크립트 위치를 기준으로 자동 계산됩니다.
+
+즉, 저장소 폴더명을 바꿀 때는 `plist` 를 직접 고치기보다 심볼릭 링크 대상만 바꾸면 됩니다.
+
+## 설정 값
+
+기본 설정 파일은 현재 아래 값을 가집니다.
+
+```bash
+AUTOPUSH_JOB_LABEL="com.jaysys.repo-autopush"
+AUTOPUSH_BRANCH="main"
+AUTOPUSH_REMOTE="origin"
+```
+
+## 심볼릭 링크
+
+현재 구성은 아래 두 링크를 기준으로 동작합니다.
+
+```text
+/Users/jaehojoo/workspace/current-research-repo
+  -> /Users/jaehojoo/workspace/Research-online
+
+~/Library/LaunchAgents/com.jaysys.repo-autopush.plist
+  -> /Users/jaehojoo/workspace/Research-online/automation/com.jaysys.repo-autopush.plist
+```
+
+저장소 폴더명이 바뀌면 첫 번째 링크만 새 실제 경로로 다시 연결하면 됩니다.
+
+## 동작 순서
 
 작업이 한 번 실행될 때마다 아래 순서로 동작합니다.
 
-1. 저장소 루트 디렉터리로 이동합니다.
-2. `.git` 디렉터리가 있는지 확인합니다.
-3. `git status --porcelain` 으로 변경사항을 확인합니다.
+1. 스크립트 위치를 기준으로 저장소 루트를 찾습니다.
+2. `autopush.env` 가 있으면 설정을 읽습니다.
+3. `.git` 디렉터리가 있는지 확인합니다.
 4. 변경사항이 없으면 로그에 `no changes` 를 남기고 종료합니다.
-5. 변경사항이 있으면 `git add -A` 를 실행합니다.
-6. 스테이징된 내용이 있으면 `auto: 2026-03-15 17:19:38` 같은 형식의 메시지로 커밋합니다.
-7. `git fetch origin` 을 실행합니다.
-8. `origin/main` 이 로컬 `main` 보다 앞서 있으면 푸시를 건너뛰고 `remote is ahead, skip push` 를 로그에 남깁니다.
-9. 그렇지 않으면 `git push origin main` 을 실행합니다.
+5. 변경사항이 있으면 `git add -A` 후 자동 커밋을 시도합니다.
+6. `git fetch` 로 원격 상태를 확인합니다.
+7. 원격 브랜치가 로컬보다 앞서 있으면 푸시를 건너뜁니다.
+8. 그렇지 않으면 `git push` 를 실행합니다.
 
-즉, 이 자동화는 매번 무조건 푸시하는 방식이 아니라, 조건을 확인한 뒤에만 푸시하는 방식입니다.
+## 설치
 
-## 현재 경로
-
-실제 파일 위치:
-- `/Users/jaehojoo/workspace/Research-online/automation/auto-push.sh`
-- `/Users/jaehojoo/workspace/Research-online/automation/com.jaysys.research-online-autopush.plist`
-
-LaunchAgent 심볼릭 링크 위치:
-- `~/Library/LaunchAgents/com.jaysys.research-online-autopush.plist`
-
-심볼릭 링크가 가리켜야 하는 대상:
-- `/Users/jaehojoo/workspace/Research-online/automation/com.jaysys.research-online-autopush.plist`
-
-## 로드와 언로드
-
-언로드:
+LaunchAgent 심볼릭 링크 예시:
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.jaysys.research-online-autopush.plist
+ln -sf <REPO_PATH>/automation/<PLIST_FILENAME> \
+  ~/Library/LaunchAgents/<PLIST_FILENAME>
+```
+
+예시 치환값:
+
+```text
+<REPO_PATH>="/absolute/path/to/your/repo"
+<PLIST_FILENAME>="com.example.repo-autopush.plist"
+```
+
+현재 저장소 기준 실제 링크:
+
+```bash
+ln -sfn /Users/jaehojoo/workspace/Research-online \
+  /Users/jaehojoo/workspace/current-research-repo
+
+ln -sfn /Users/jaehojoo/workspace/Research-online/automation/com.jaysys.repo-autopush.plist \
+  ~/Library/LaunchAgents/com.jaysys.repo-autopush.plist
 ```
 
 로드:
 
 ```bash
-launchctl load ~/Library/LaunchAgents/com.jaysys.research-online-autopush.plist
+launchctl load ~/Library/LaunchAgents/<PLIST_FILENAME>
 ```
 
-`plist` 를 수정한 뒤 다시 반영할 때:
+현재 저장소 기준 예시:
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.jaysys.research-online-autopush.plist
-launchctl load ~/Library/LaunchAgents/com.jaysys.research-online-autopush.plist
+launchctl load ~/Library/LaunchAgents/com.jaysys.repo-autopush.plist
 ```
 
-## 수동 실행
+이 명령은 위 LaunchAgent 심볼릭 링크가 이미 연결되어 있다는 전제에서 동작합니다.
 
-즉시 한 번 실행:
+언로드:
 
 ```bash
-launchctl start com.jaysys.research-online-autopush
+launchctl unload ~/Library/LaunchAgents/<PLIST_FILENAME>
 ```
 
-주의: 현재 저장소에 변경사항이 남아 있으면, 이 명령으로 즉시 자동 커밋과 푸시가 일어날 수 있습니다.
-
-## 상태 확인과 진단
-
-로드된 작업 상태 확인:
+현재 저장소 기준 예시:
 
 ```bash
-launchctl print gui/$(id -u)/com.jaysys.research-online-autopush
+launchctl unload ~/Library/LaunchAgents/com.jaysys.repo-autopush.plist
 ```
 
-심볼릭 링크 확인:
+수동 실행:
 
 ```bash
-ls -l ~/Library/LaunchAgents/com.jaysys.research-online-autopush.plist
+launchctl start <JOB_LABEL>
 ```
 
-다음 자동 실행 전에 저장소 상태 확인:
+현재 저장소 기준 예시:
 
 ```bash
-git -C /Users/jaehojoo/workspace/Research-online status --short --branch
+launchctl start com.jaysys.repo-autopush
+```
+
+## 상태 확인
+
+현재 저장소 상태 확인:
+
+```bash
+git -C <REPO_PATH> status --short --branch
+```
+
+LaunchAgent 상태 확인:
+
+```bash
+launchctl print gui/$(id -u)/<JOB_LABEL>
 ```
 
 ## 로그 확인
@@ -116,36 +148,33 @@ git -C /Users/jaehojoo/workspace/Research-online status --short --branch
 스크립트 로그:
 
 ```bash
-tail -n 50 /Users/jaehojoo/workspace/Research-online/automation/logs/run.log
+tail -n 50 <REPO_PATH>/automation/logs/run.log
 ```
 
 LaunchAgent 표준 출력 로그:
 
 ```bash
-tail -n 50 /Users/jaehojoo/workspace/Research-online/automation/logs/launchd.out.log
+tail -n 50 /tmp/<JOB_LABEL>.out.log
 ```
 
 LaunchAgent 표준 오류 로그:
 
 ```bash
-tail -n 50 /Users/jaehojoo/workspace/Research-online/automation/logs/launchd.err.log
+tail -n 50 /tmp/<JOB_LABEL>.err.log
 ```
+
+플레이스홀더는 다음처럼 해석하면 됩니다.
+
+```text
+<REPO_PATH>   저장소 절대경로
+<PLIST_FILENAME> LaunchAgent plist 파일명
+<JOB_LABEL>   launchd 에 등록된 Label 값
+```
+
+현재 `plist` 는 저장소 실제 폴더가 아니라 `/Users/jaehojoo/workspace/current-research-repo` 를 기준 경로로 사용합니다.
 
 ## 주의사항
 
-- 이 스크립트는 `git add -A` 를 사용하므로, 추적 중인 삭제 파일과 새로 생긴 비무시 파일까지 함께 포함합니다.
-- 실행 시점의 작업 트리 내용을 그대로 커밋합니다. 자동 커밋되면 안 되는 미완성 작업은 그대로 두지 않는 편이 좋습니다.
-- `.env`, `venv`, 캐시 파일, `automation/logs/` 는 반드시 계속 ignore 상태를 유지해야 합니다.
-- 다른 기기나 다른 사용자가 `origin/main` 에 먼저 푸시한 경우, 이 작업은 자동 병합하지 않습니다. 대신 `remote is ahead, skip push` 를 로그에 남기고 종료합니다.
-- 더 엄격하게 제어하고 싶다면 LaunchAgent 는 로드해 두되 `start` 는 함부로 쓰지 말고, 민감한 작업을 할 때는 잠시 언로드하는 편이 낫습니다.
-
-## 완전 제거
-
-작업을 내리고 심볼릭 링크를 삭제합니다.
-
-```bash
-launchctl unload ~/Library/LaunchAgents/com.jaysys.research-online-autopush.plist
-rm ~/Library/LaunchAgents/com.jaysys.research-online-autopush.plist
-```
-
-`automation/` 내부 파일은 LaunchAgent 를 제거한 뒤에도 저장소 안에 그대로 두어도 됩니다.
+- 이 자동화는 `git add -A` 를 사용하므로 추적 중인 삭제 파일과 새로 생긴 비무시 파일까지 함께 포함합니다.
+- 자동 커밋되면 안 되는 미완성 작업은 작업 트리에 그대로 두지 않는 편이 안전합니다.
+- 다른 기기나 다른 사용자가 원격 브랜치에 먼저 푸시한 경우, 이 작업은 자동 병합하지 않고 푸시를 건너뜁니다.

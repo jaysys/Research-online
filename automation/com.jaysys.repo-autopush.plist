@@ -3,12 +3,12 @@
 <plist version="1.0">
   <dict>
     <key>Label</key>
-    <string>com.jaysys.research-online-autopush</string>
+    <string>com.jaysys.repo-autopush</string>
 
     <key>ProgramArguments</key>
     <array>
       <string>/bin/zsh</string>
-      <string>/Users/jaehojoo/workspace/Research-online/automation/auto-push.sh</string>
+      <string>/Users/jaehojoo/workspace/current-research-repo/automation/auto-push.sh</string>
     </array>
 
     <key>EnvironmentVariables</key>
@@ -18,7 +18,7 @@
     </dict>
 
     <key>WorkingDirectory</key>
-    <string>/Users/jaehojoo/workspace/Research-online</string>
+    <string>/Users/jaehojoo/workspace/current-research-repo</string>
 
     <key>StartInterval</key>
     <integer>600</integer>
@@ -27,9 +27,9 @@
     <false/>
 
     <key>StandardOutPath</key>
-    <string>/Users/jaehojoo/workspace/Research-online/automation/logs/launchd.out.log</string>
+    <string>/tmp/com.jaysys.repo-autopush.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/jaehojoo/workspace/Research-online/automation/logs/launchd.err.log</string>
+    <string>/tmp/com.jaysys.repo-autopush.err.log</string>
   </dict>
 </plist>

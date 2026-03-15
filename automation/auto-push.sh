@@ -3,16 +3,24 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
-BRANCH="main"
-REMOTE="origin"
+CONFIG_FILE="$SCRIPT_DIR/autopush.env"
 LOG_DIR="$SCRIPT_DIR/logs"
 RUN_LOG="$LOG_DIR/run.log"
 STAMP="$(date '+%Y-%m-%d %H:%M:%S')"
 
+if [ -f "$CONFIG_FILE" ]; then
+  # Load deployment-specific settings from a single file.
+  source "$CONFIG_FILE"
+fi
+
+BRANCH="${AUTOPUSH_BRANCH:-main}"
+REMOTE="${AUTOPUSH_REMOTE:-origin}"
+JOB_LABEL="${AUTOPUSH_JOB_LABEL:-com.jaysys.repo-autopush}"
+
 mkdir -p "$LOG_DIR"
 
 {
-  echo "[$STAMP] start"
+  echo "[$STAMP] start label=$JOB_LABEL repo=$REPO_DIR branch=$BRANCH remote=$REMOTE"
 } >> "$RUN_LOG"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
