@@ -6,10 +6,10 @@
 
 ## 핵심 구성
 
-- `app2.py`
-  현재 기준 메인 실행 파일입니다. 상태 파일 저장, 오래된 업데이트 건너뛰기, 타임아웃 설정, `/pwd`, `/reset` 같은 운영 기능이 들어 있습니다.
 - `app.py`
-  더 단순한 초기 버전입니다. 현재는 참고용에 가깝습니다.
+  현재 기준 메인 실행 파일입니다. 상태 파일 저장, 오래된 업데이트 건너뛰기, 타임아웃 설정, `/pwd`, `/reset` 같은 운영 기능이 들어 있습니다.
+- `app2.py`
+  이전 실행 경로 호환용 래퍼입니다. 내부적으로 `app.py`를 호출합니다.
 - `research/`
   조사 결과나 정리 문서를 보관하는 폴더입니다.
 - `automation/`
@@ -46,7 +46,7 @@ cp .env.example .env
 `.env`를 채운 뒤 실행합니다.
 
 ```bash
-python3 app2.py
+python3 app.py
 ```
 
 ## 환경 변수
@@ -91,8 +91,8 @@ python3 app2.py
 
 ```text
 .
-├── app2.py
 ├── app.py
+├── app2.py
 ├── research/
 ├── automation/
 ├── .env.example
@@ -101,7 +101,7 @@ python3 app2.py
 
 ## 운영 메모
 
-- 실제 운영은 `app2.py` 기준으로 보는 것이 맞습니다.
+- 실제 운영 기준 엔트리포인트는 `app.py`입니다.
 - 결과 문서가 쌓이면 `research/` 아래에 주제별 Markdown 파일로 관리하면 됩니다.
 - 자동 푸시는 선택 사항입니다. 활성화하려면 `automation/README.md`의 `launchd` 설정을 따르세요.
 - 민감한 작업이라면 `ALLOWED_TELEGRAM_USER_ID`를 반드시 설정하는 편이 안전합니다.
