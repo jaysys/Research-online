@@ -8,8 +8,6 @@
 
 - `app.py`
   현재 기준 메인 실행 파일입니다. 상태 파일 저장, 오래된 업데이트 건너뛰기, 타임아웃 설정, `/pwd`, `/reset` 같은 운영 기능이 들어 있습니다.
-- `app2.py`
-  이전 실행 경로 호환용 래퍼입니다. 내부적으로 `app.py`를 호출합니다.
 - `research/`
   조사 결과나 정리 문서를 보관하는 폴더입니다.
 - `automation/`
@@ -92,7 +90,6 @@ python3 app.py
 ```text
 .
 ├── app.py
-├── app2.py
 ├── research/
 ├── automation/
 ├── .env.example
